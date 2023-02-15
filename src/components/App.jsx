@@ -35,15 +35,7 @@ const App = () => {
       };
       fetchPosts();
     }
-  }, [
-    search,
-    page,
-    setLoading,
-    searchImageAPI,
-    setImages,
-    setError,
-    setLoading,
-  ]);
+  }, [search, page, setLoading, setImages, setError, setLoading]);
 
   const searchImages = ({ search }) => {
     if (search.trim()) {
