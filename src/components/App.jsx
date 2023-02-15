@@ -1,110 +1,89 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { ColorRing } from 'react-loader-spinner';
+import { searchImageAPI } from '../api/api';
 
 import Searchbar from './Searchbar/Searchbar';
 import Button from './Button/Button';
 import ImageGallery from './ImageGallery/ImageGallery';
 import Modal from './Modal/Modal';
-import { searchImageAPI } from '../api/api';
 
 import styles from './App.module.css';
 
-class App extends Component {
-  state = {
-    search: '',
-    images: [],
-    loading: false,
-    error: null,
-    page: 1,
-    showModal: false,
-    largeImageURL: '',
-  };
+const App = () => {
+  const [search, setSearch] = useState('');
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState('');
 
-  componentDidUpdate(prevProps, prevState) {
-    const { search, page } = this.state;
+  useEffect(() => {
+    if (search) {
+      const fetchPosts = async () => {
+        try {
+          setLoading(true);
 
-    if (prevState.search !== search || prevState.page !== page) {
-      this.fetchPosts();
+          const data = await searchImageAPI(search, page);
+
+          setImages(images => [...images, ...data.hits]);
+        } catch (error) {
+          setError(error.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchPosts();
     }
+  }, [search, page]);
 
-    if (page > 1) {
-      window.scrollTo({
-        top: document.documentElement.scrollHeight,
-        behavior: 'smooth',
-      });
-    }
-  }
-
-  async fetchPosts() {
-    try {
-      this.setState({ loading: true });
-      const { search, page } = this.state;
-
-      const data = await searchImageAPI(search, page);
-
-      this.setState(({ images }) => ({
-        images: [...images, ...data.hits],
-      }));
-    } catch (error) {
-      this.setState({ error: error.message });
-    } finally {
-      this.setState({ loading: false });
-    }
-  }
-
-  searchImages = ({ search }) => {
+  const searchImages = ({ search }) => {
     if (search.trim()) {
-      this.setState({ search, images: [], page: 1 });
+      setSearch(search);
+      setImages([]);
+      setPage(1);
     }
   };
 
-  loadMore = () => {
-    this.setState(({ page }) => ({ page: page + 1 }));
+  const loadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  showImage = data => {
-    this.setState({
-      largeImageURL: data,
-      showModal: true,
-    });
+  const showImage = data => {
+    setLargeImageURL(data);
+    setShowModal(true);
   };
 
-  closeModal = () => {
-    this.setState({
-      showModal: false,
-      largeImageURL: '',
-    });
+  const closeModal = () => {
+    setShowModal(false);
+    setLargeImageURL('');
   };
 
-  render() {
-    const { images, loading, error, showModal, largeImageURL } = this.state;
-    const { searchImages, loadMore, showImage, closeModal } = this;
+  return (
+    <div className={styles.App}>
+      <Searchbar onSubmit={searchImages} />
 
-    return (
-      <div className={styles.App}>
-        <Searchbar onSubmit={searchImages} />
+      <ImageGallery images={images} showImage={showImage} />
 
-        <ImageGallery images={images} showImage={showImage} />
+      {loading && (
+        <ColorRing
+          height="100"
+          width="100"
+          radius="10"
+          color="green"
+          ariaLabel="loading"
+        />
+      )}
+      {error && <p>Error! Try again later.</p>}
 
-        {loading && (
-          <ColorRing
-            height="100"
-            width="100"
-            radius="10"
-            color="green"
-            ariaLabel="loading"
-          />
-        )}
-        {error && <p>Error! Try again later.</p>}
+      {Boolean(images.length) && <Button loadMore={loadMore} />}
+      {showModal && (
+        <Modal close={closeModal}>
+          <img src={largeImageURL} alt="" />
+        </Modal>
+      )}
+    </div>
+  );
+};
 
-        {Boolean(images.length) && <Button loadMore={loadMore} />}
-        {showModal && (
-          <Modal close={closeModal}>
-            <img src={largeImageURL} alt="" />
-          </Modal>
-        )}
-      </div>
-    );
-  }
-}
 export default App;
